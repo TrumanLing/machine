@@ -16,39 +16,40 @@ import (
 )
 
 type Driver struct {
-	AuthUrl          string
-	Insecure         bool
-	DomainID         string
-	DomainName       string
-	Username         string
-	Password         string
-	TenantName       string
-	TenantId         string
-	Region           string
-	AvailabilityZone string
-	EndpointType     string
-	MachineName      string
-	MachineId        string
-	FlavorName       string
-	FlavorId         string
-	ImageName        string
-	ImageId          string
-	KeyPairName      string
-	NetworkName      string
-	NetworkId        string
-	SecurityGroups   []string
-	FloatingIpPool   string
-	FloatingIpPoolId string
-	SSHUser          string
-	SSHPort          int
-	IPAddress        string
-	CaCertPath       string
-	PrivateKeyPath   string
-	storePath        string
-	SwarmMaster      bool
-	SwarmHost        string
-	SwarmDiscovery   string
-	client           Client
+	AuthUrl            string
+	Insecure           bool
+	DomainID           string
+	DomainName         string
+	Username           string
+	Password           string
+	TenantName         string
+	TenantId           string
+	Region             string
+	AvailabilityZone   string
+	EndpointType       string
+	MachineName        string
+	MachineId          string
+	FlavorName         string
+	FlavorId           string
+	ImageName          string
+	ImageId            string
+	KeyPairName        string
+	NetworkName        string
+	NetworkId          string
+	SecurityGroups     []string
+	FloatingIpPool     string
+	FloatingIpPoolId   string
+	SSHUser            string
+	SSHPort            int
+	IPAddress          string
+	CaCertPath         string
+	PrivateKeyPath     string
+	storePath          string
+	SwarmMaster        bool
+	CreateCmdReturnErr bool
+	SwarmHost          string
+	SwarmDiscovery     string
+	client             Client
 }
 
 func init() {
@@ -214,6 +215,10 @@ func (d *Driver) GetSSHHostname() (string, error) {
 	return d.GetIP()
 }
 
+func (d *Driver) GetMachineCreateReturnErr() (bool, error) {
+	return d.CreateCmdReturnErr, nil
+}
+
 func (d *Driver) GetSSHKeyPath() string {
 	return filepath.Join(d.storePath, "id_rsa")
 }
@@ -353,12 +358,15 @@ func (d *Driver) Create() error {
 	d.KeyPairName = fmt.Sprintf("%s-%s", d.MachineName, utils.GenerateRandomID())
 
 	if err := d.resolveIds(); err != nil {
+		d.CreateCmdReturnErr = true
 		return err
 	}
 	if err := d.createSSHKey(); err != nil {
+		d.CreateCmdReturnErr = true
 		return err
 	}
 	if err := d.createMachine(); err != nil {
+		d.CreateCmdReturnErr = true
 		return err
 	}
 	if err := d.waitForInstanceActive(); err != nil {
@@ -616,6 +624,7 @@ func (d *Driver) createMachine() error {
 	}
 	instanceId, err := d.client.CreateInstance(d)
 	if err != nil {
+		d.CreateCmdReturnErr = true
 		return err
 	}
 	d.MachineId = instanceId

@@ -27,11 +27,11 @@ import (
 )
 
 const (
-	isoFilename         = "boot2docker.iso"
 	defaultHostOnlyCIDR = "192.168.99.1/24"
 )
 
 var (
+	isoFilename                 = "boot2docker.iso"
 	ErrUnableToGenerateRandomIP = errors.New("unable to generate random IP")
 )
 
@@ -190,6 +190,7 @@ func (d *Driver) Create() error {
 
 	log.Infof("Creating VirtualBox VM...")
 
+	isoFilename = b2dutils.GetIsoFilename()
 	// import b2d VM if requested
 	if d.Boot2DockerImportVM != "" {
 		name := d.Boot2DockerImportVM
@@ -304,7 +305,7 @@ func (d *Driver) Create() error {
 		"--port", "0",
 		"--device", "0",
 		"--type", "dvddrive",
-		"--medium", filepath.Join(d.storePath, "boot2docker.iso")); err != nil {
+		"--medium", filepath.Join(d.storePath, isoFilename)); err != nil {
 		return err
 	}
 
@@ -560,7 +561,8 @@ func (d *Driver) diskPath() string {
 func (d *Driver) generateDiskImage(size int) error {
 	log.Debugf("Creating %d MB hard disk image...", size)
 
-	magicString := "boot2docker, please format-me"
+	parts := strings.Split(isoFilename, ".")
+	magicString := fmt.Sprintf("%s, please format-me", parts[0])
 
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)

@@ -22,7 +22,7 @@ func NewUbuntuProvisioner(d drivers.Driver) Provisioner {
 	return &UbuntuProvisioner{
 		GenericProvisioner{
 			DockerOptionsDir:  "/etc/docker",
-			DaemonOptionsFile: "/etc/default/docker",
+			DaemonOptionsFile: "/etc/default/docker.io",
 			OsReleaseId:       "ubuntu",
 			Packages: []string{
 				"curl",
@@ -37,7 +37,7 @@ type UbuntuProvisioner struct {
 }
 
 func (provisioner *UbuntuProvisioner) Service(name string, action pkgaction.ServiceAction) error {
-	command := fmt.Sprintf("sudo service %s %s", name, action.String())
+	command := fmt.Sprintf("sudo service %s.io %s", name, action.String())
 
 	if _, err := provisioner.SSHCommand(command); err != nil {
 		return err
@@ -107,11 +107,15 @@ func (provisioner *UbuntuProvisioner) Provision(swarmOptions swarm.SwarmOptions,
 		return err
 	}
 
-	for _, pkg := range provisioner.Packages {
+	/*if err := provisioner.Service("docker", pkgaction.Restart); err != nil {
+	        return err
+	}*/
+
+	/*for _, pkg := range provisioner.Packages {
 		if err := provisioner.Package(pkg, pkgaction.Install); err != nil {
 			return err
 		}
-	}
+	}*/
 
 	if err := installDockerGeneric(provisioner, engineOptions.InstallURL); err != nil {
 		return err

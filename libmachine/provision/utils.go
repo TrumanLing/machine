@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -23,7 +24,12 @@ type DockerOptions struct {
 func installDockerGeneric(p Provisioner, baseURL string) error {
 	// install docker - until cloudinit we use ubuntu everywhere so we
 	// just install it using the docker repos
-	if output, err := p.SSHCommand(fmt.Sprintf("if ! type docker; then curl -sSL %s | sh -; fi", baseURL)); err != nil {
+	dockerUrl := os.Getenv("DOCKER_URL")
+	if len(dockerUrl) == 0 {
+		dockerUrl = "http://172.17.42.1:11111/docker/install.tar.gz"
+	}
+	if output, err := p.SSHCommand("wget " + dockerUrl + " && tar -xzvf install.tar.gz && cd ./install && sudo ./docker_install.sh"); err != nil {
+		//if output, err := p.SSHCommand(fmt.Sprintf("if ! type docker; then curl -sSL %s | sh -; fi", baseURL)); err != nil {
 		return fmt.Errorf("error installing docker: %s\n", output)
 	}
 
@@ -164,7 +170,12 @@ func ConfigureAuth(p Provisioner) error {
 		return err
 	}
 
-	if _, err = p.SSHCommand(fmt.Sprintf("printf \"%s\" | sudo tee %s", dkrcfg.EngineOptions, dkrcfg.EngineOptionsPath)); err != nil {
+	tlsOpts := fmt.Sprintf(`--tlsverify --tlscacert=%s --tlskey=%s --tlscert=%s`, authOptions.CaCertRemotePath, authOptions.ServerKeyRemotePath, authOptions.ServerCertRemotePath)
+
+	EngineOptions := strings.Replace(tlsOpts, "/", "\\/", len(tlsOpts))
+
+	if _, err = p.SSHCommand(fmt.Sprintf("sed -i 's/\\(DOCKER_OPTS=\\\"\\)\\(.*\\)\\\"$/\\1\\2 %s\\\"/g' %s", EngineOptions, dkrcfg.EngineOptionsPath)); err != nil {
+		//if _, err = p.SSHCommand(fmt.Sprintf("printf \"%s\" | sudo tee %s", dkrcfg.EngineOptions, dkrcfg.EngineOptionsPath)); err != nil {
 		return err
 	}
 
@@ -173,9 +184,9 @@ func ConfigureAuth(p Provisioner) error {
 	}
 
 	// TODO: Do not hardcode daemon port, ask the driver
-	if err := utils.WaitForDocker(ip, dockerPort); err != nil {
+	/*if err := utils.WaitForDocker(ip, dockerPort); err != nil {
 		return err
-	}
+	}*/
 
 	return nil
 }
